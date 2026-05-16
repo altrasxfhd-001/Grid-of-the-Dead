@@ -25,15 +25,21 @@ export default class GameScene extends Phaser.Scene {
 
     this.gems = [];
 
+    // --- Weapon Logic (Aura Attack - Commented out for now) ---
+    /*
     this.auraSprite = this.add.image(this.player.iso.x, this.player.iso.y, 'aura').setAlpha(0).setDepth(9).setOrigin(0.5, 0.5);
     this.worldContainer.add(this.auraSprite);
-
     this.autoAttackRadius = 80;
     this.autoAttackDamage = 30;
     this.time.addEvent({ delay: 2000, loop: true, callback: this.triggerAutoAttack, callbackScope: this });
+    */
 
-    // Events
-    this.time.addEvent({ delay: 25000, loop: true, callback: this.triggerNarrativeEvent, callbackScope: this });
+    // --- New Weapon: Throwing Knife ---
+    this.knives = this.physics.add.group();
+    this.time.addEvent({ delay: 1000, loop: true, callback: this.throwKnife, callbackScope: this });
+
+    // Events (Narrative events removed as requested)
+    // this.time.addEvent({ delay: 25000, loop: true, callback: this.triggerNarrativeEvent, callbackScope: this });
     this.time.addEvent({ delay: 3000, loop: true, callback: this.spawnZombie, callbackScope: this });
 
     this.hud = new HUD(this);
@@ -59,20 +65,38 @@ export default class GameScene extends Phaser.Scene {
       const zoom = Phaser.Math.Clamp(this.cameras.main.zoom - dy * 0.001, 0.5, 2);
       this.cameras.main.setZoom(zoom);
     });
+
+    // Space to Pause
+    this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.spaceKey.on('down', this.togglePause, this);
+
+    this.pausedText = this.add.text(450, 300, 'PAUSED', { fontSize: '64px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(1000).setVisible(false);
+  }
+
+  togglePause() {
+    if (this.dead) return;
+    this.isGamePaused = !this.isGamePaused;
+    this.pausedText.setVisible(this.isGamePaused);
+    
+    if (this.isGamePaused) {
+      this.physics.world.pause();
+      this.time.paused = true;
+    } else {
+      this.physics.world.resume();
+      this.time.paused = false;
+    }
   }
 
   setupTilemap() {
-    // Create a simple map data array
     const data = [];
     for (let y = 0; y < GRID; y++) {
       const row = [];
       for (let x = 0; x < GRID; x++) {
-        row.push(Math.random() < 0.15 ? 1 : 0); // 0 = grass, 1 = dirt
+        row.push(Math.random() < 0.15 ? 1 : 0);
       }
       data.push(row);
     }
 
-    // Create the tilemap
     const map = this.make.tilemap({
       data: data,
       tileWidth: TILE_W,
@@ -81,16 +105,12 @@ export default class GameScene extends Phaser.Scene {
 
     const tileset = map.addTilesetImage('tiles', 'tiles', 64, 32);
     
-    // We use a manual loop for rendering isometric tiles because Phaser's built-in 
-    // isometric support in 3.60 can be restrictive for custom world containers.
-    // However, for optimization as requested, we'll use the layer if possible or 
-    // keep it modular.
-    
     for (let gy = 0; gy < GRID; gy++) {
       for (let gx = 0; gx < GRID; gx++) {
         const { x, y } = toIso(gx, gy);
-        const tileIndex = data[gy][gx];
-        const tileSprite = this.add.image(x, y, 'tiles', tileIndex).setDepth(gx + gy).setOrigin(0.5, 0.5);
+        const type = data[gy][gx];
+        const frameIndex = type === 0 ? 0 : 2; 
+        const tileSprite = this.add.image(x, y, 'tiles', frameIndex).setDepth(gx + gy).setOrigin(0.5, 0.5).setScale(0.125);
         this.worldContainer.add(tileSprite);
       }
     }
@@ -123,6 +143,50 @@ export default class GameScene extends Phaser.Scene {
     this.gems.push({ gx, gy, sprite, value: 30 });
   }
 
+  // --- New Attack: Knife Throw ---
+  throwKnife() {
+    if (this.dead || this.isGamePaused) return;
+
+    // Find nearest alive zombie
+    const aliveZombies = this.zombies.filter(z => z.alive);
+    if (aliveZombies.length === 0) return;
+
+    let nearestZombie = null;
+    let minDist = Infinity;
+    const px = this.player.sprite.x;
+    const py = this.player.sprite.y - 40;
+
+    aliveZombies.forEach(z => {
+      const dist = Phaser.Math.Distance.Between(px, py, z.sprite.x, z.sprite.y);
+      if (dist < minDist) {
+        minDist = dist;
+        nearestZombie = z;
+      }
+    });
+
+    if (!nearestZombie) return;
+
+    const knife = this.knives.create(px, py, 'knife');
+    knife.setDepth(100);
+    
+    const speed = 500;
+    const angle = Phaser.Math.Angle.Between(px, py, nearestZombie.sprite.x, nearestZombie.sprite.y);
+
+    knife.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+    knife.setRotation(angle);
+    
+    this.time.addEvent({ delay: 2000, callback: () => knife.destroy() });
+
+    this.physics.add.overlap(knife, this.zombies.map(z => z.sprite), (k, zSprite) => {
+      const zombie = this.zombies.find(z => z.sprite === zSprite);
+      if (zombie && zombie.alive) {
+        zombie.takeDamage(6);
+        k.destroy();
+      }
+    });
+  }
+
+  /*
   triggerAutoAttack() {
     if (this.dead || this.isGamePaused) return;
     const px = this.player.iso.x, py = this.player.iso.y;
@@ -136,6 +200,7 @@ export default class GameScene extends Phaser.Scene {
       }
     });
   }
+  */
 
   update(time, delta) {
     if (this.dead) return;
@@ -192,7 +257,8 @@ export default class GameScene extends Phaser.Scene {
     this.worldContainer.setPosition(this.camOffset.x, this.camOffset.y);
   }
 
-  // --- UI Overlays ---
+  // --- UI Overlays (Narrative events removed) ---
+  /*
   triggerNarrativeEvent() {
     if (this.dead || this.isGamePaused) return;
     this.isGamePaused = true;
@@ -211,6 +277,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.overlayUI.add([bg, title, desc, btn1, btn2]);
   }
+  */
 
   triggerLevelUp() {
     this.isGamePaused = true;
@@ -219,9 +286,9 @@ export default class GameScene extends Phaser.Scene {
     const bg = this.add.rectangle(450, 300, 900, 600, 0x002244, 0.9);
     const title = this.add.text(450, 150, 'LEVEL UP!', { fontSize: '32px', color: '#00ffff', fontStyle: 'bold' }).setOrigin(0.5);
 
-    const btn1 = this.createButton(450, 250, '🔥 زيادة الضرر', () => { this.autoAttackDamage += 15; this.closeOverlay(); });
+    const btn1 = this.createButton(450, 250, '🔥 زيادة الضرر', () => { /* Attack power up logic */ this.closeOverlay(); });
     const btn2 = this.createButton(450, 320, '🏃 زيادة السرعة', () => { this.player.speed += 1; this.closeOverlay(); });
-    const btn3 = this.createButton(450, 390, '🛑 نطاق ضرب أوسع', () => { this.autoAttackRadius += 20; this.closeOverlay(); });
+    const btn3 = this.createButton(450, 390, '🛑 نطاق ضرب أوسع', () => { /* Scope logic */ this.closeOverlay(); });
 
     this.overlayUI.add([bg, title, btn1, btn2, btn3]);
   }

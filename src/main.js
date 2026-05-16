@@ -9,7 +9,11 @@ const config = {
   parent: 'game-container',
   scene: [BootScene, GameScene],
   pixelArt: true,
-  antialias: false
+  antialias: false,
+  physics: {
+    default: 'arcade',
+    arcade: { debug: false }
+  }
 };
 
 const game = new Phaser.Game(config);
