@@ -1,0 +1,74 @@
+{
+  "frameWidth": 64,
+  "frameHeight": 64,
+  "anchor": {
+    "x": 0.5,
+    "y": 0.875
+  },
+  "directions": {
+    "n": {
+      "row": 0,
+      "idleFrame": "n_0",
+      "footAnchor": {
+        "x": 0.5,
+        "y": 0.875
+      }
+    },
+    "ne": {
+      "row": 0,
+      "idleFrame": "ne_0",
+      "footAnchor": {
+        "x": 0.5,
+        "y": 0.875
+      }
+    },
+    "e": {
+      "row": 1,
+      "idleFrame": "e_0",
+      "footAnchor": {
+        "x": 0.5,
+        "y": 0.875
+      }
+    },
+    "se": {
+      "row": 1,
+      "idleFrame": "se_0",
+      "footAnchor": {
+        "x": 0.5,
+        "y": 0.875
+      }
+    },
+    "s": {
+      "row": 2,
+      "idleFrame": "s_0",
+      "footAnchor": {
+        "x": 0.5,
+        "y": 0.875
+      }
+    },
+    "sw": {
+      "row": 2,
+      "idleFrame": "sw_0",
+      "footAnchor": {
+        "x": 0.5,
+        "y": 0.875
+      }
+    },
+    "w": {
+      "row": 3,
+      "idleFrame": "w_0",
+      "footAnchor": {
+        "x": 0.5,
+        "y": 0.875
+      }
+    },
+    "nw": {
+      "row": 3,
+      "idleFrame": "nw_0",
+      "footAnchor": {
+        "x": 0.5,
+        "y": 0.875
+      }
+    }
+  }
+}
